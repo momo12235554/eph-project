@@ -29,7 +29,7 @@ export default function RootLayout() {
     <AuthProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* Ancienne route par défaut supprimée */}
           <Stack.Screen name="(admin)" options={{ headerShown: false }} />
           <Stack.Screen name="(fournisseur)" options={{ headerShown: false }} />
           <Stack.Screen name="(pharma)" options={{ headerShown: false }} />
