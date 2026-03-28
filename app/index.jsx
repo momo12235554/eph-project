@@ -66,8 +66,7 @@ export default function Index() {
     router.replace('/(fournisseur)/fournisseur');
   };
   const handleInscriptionAdmin = () => { 
-    setShowConnexionAdmin(false); 
-    router.push('/(auth)/SInscrire'); 
+    Alert.alert('Information', 'L\'inscription doit maintenant se faire via le panel Laravel super-admin.'); 
   };
 
   const isWeb = Platform.OS === 'web';
