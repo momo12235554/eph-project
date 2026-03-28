@@ -1,0 +1,48 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // On s'assure que la table n'existe pas ou on la modifie
+        // Avec migrate:fresh cette table sera recréée car Fresh DROP tout.
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('nom');
+            $table->string('prenom')->nullable();
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('role')->default('pharmacien'); // admin, pharmacien, fournisseur
+            $table->string('service')->nullable();
+            $table->string('telephone', 20)->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+        });
+
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('sessions');
+    }
+};

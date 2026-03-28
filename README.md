@@ -1,50 +1,112 @@
-# Welcome to your Expo app 👋
+# 🏥 EPH — Application de Gestion d'Établissement Public Hospitalier
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Application mobile de gestion hospitalière développée dans le cadre d'un projet académique (COO). Elle permet la gestion des médicaments, des ordonnances, des commandes, des alertes et des utilisateurs au sein d'un établissement de santé.
 
-## Get started
+---
 
-1. Install dependencies
+## 📱 Technologies utilisées
 
-   ```bash
-   npm install
-   ```
+| Côté | Technologie |
+|------|-------------|
+| Frontend | React Native + Expo (Expo Router) |
+| Backend | Laravel 10 (API REST) |
+| Base de données | MySQL |
+| Auth | JWT (Laravel Sanctum) |
 
-2. Start the app
+---
 
-   ```bash
-    npx expo start
-   ```
+## 🗂️ Structure du projet
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+EPH/
+├── app/                    # Routing Expo (file-based routing)
+│   ├── (auth)/             # Pages de connexion et inscription
+│   ├── (admin)/            # Interface administrateur
+│   ├── (pharma)/           # Interface pharmacien
+│   ├── (fournisseur)/      # Interface fournisseur
+│   └── index.jsx           # Page d'accueil
+│
+├── src/
+│   ├── services/           # Appels API (authService, medicamentService...)
+│   ├── components/         # Composants réutilisables
+│   ├── hooks/              # Hooks personnalisés
+│   ├── config/             # Configuration (URL API...)
+│   └── constants/          # Constantes globales
+│
+├── assets/                 # Images et icônes
+├── backend_laravel/        # Backend Laravel (API REST)
+│   ├── app/Models/         # Modèles (Medicament, Ordonnance, Commande...)
+│   ├── app/Http/Controllers/ # Contrôleurs API
+│   ├── routes/api.php      # Routes API
+│   └── database/migrations/# Migrations MySQL
+│
+└── eph_db.sql              # Dump de la base de données MySQL
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-## Learn more
+## 👥 Rôles utilisateurs
 
-To learn more about developing your project with Expo, look at the following resources:
+- **Administrateur** : gestion globale (médicaments, stocks, commandes, alertes, utilisateurs)
+- **Pharmacien** : gestion des ordonnances et des stocks
+- **Fournisseur** : consultation et traitement des commandes
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+---
 
-## Join the community
+## ⚙️ Installation
 
-Join our community of developers creating universal apps.
+### Prérequis
+- Node.js + npm
+- PHP 8.1+ / Composer
+- MySQL
+- Expo Go (pour tester sur mobile)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 1. Frontend React Native
+
+```bash
+npm install
+npx expo start
+```
+
+### 2. Backend Laravel
+
+```bash
+cd backend_laravel
+composer install
+cp .env.example .env
+php artisan key:generate
+```
+
+Configurer la base de données dans `.env` :
+```env
+DB_DATABASE=eph_db
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+Importer la base de données :
+```bash
+mysql -u root -p eph_db < ../eph_db.sql
+```
+
+Lancer le serveur :
+```bash
+php artisan serve
+```
+
+---
+
+## 🚀 Fonctionnalités principales
+
+- ✅ Authentification multi-rôles (Admin / Pharmacien / Fournisseur)
+- ✅ Gestion des médicaments et stocks
+- ✅ Gestion des ordonnances
+- ✅ Système de commandes et livraisons
+- ✅ Alertes de stock critique
+- ✅ Tableau de bord avec statistiques
+
+---
+
+## 📄 Licence
+
+Projet académique — Université / COO
