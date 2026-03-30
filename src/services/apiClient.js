@@ -85,6 +85,14 @@ export const apiClient = {
 
     async delete(endpoint, options = {}) {
         return this.call(endpoint, { ...options, method: 'DELETE' });
+    },
+
+    async patch(endpoint, data = {}, options = {}) {
+        return this.call(endpoint, { 
+            ...options, 
+            method: 'PATCH', 
+            body: JSON.stringify(data) 
+        });
     }
 };
 

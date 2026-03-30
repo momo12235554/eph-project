@@ -137,18 +137,26 @@ const OrdonnancesPage = () => {
         return configs[statut] || configs.en_attente;
     };
 
-    const handleValider = (id) => {
-        setOrdonnances(ordonnances.map(ord =>
-            ord.id === id ? { ...ord, statut: 'validee' } : ord
-        ));
-        Alert.alert('Succès', 'Ordonnance validée avec succès');
+    const handleValider = async (id) => {
+        try {
+            await apiClient.put(`/ordonnances/${id}`, { statut: 'validee' });
+            Alert.alert('Succès', 'Ordonnance validée avec succès');
+            loadData();
+        } catch (error) {
+            console.error("Erreur validation:", error);
+            Alert.alert('Erreur', "Impossible de valider l'ordonnance.");
+        }
     };
 
-    const handleDelivrer = (id) => {
-        setOrdonnances(ordonnances.map(ord =>
-            ord.id === id ? { ...ord, statut: 'delivree' } : ord
-        ));
-        Alert.alert('Succès', 'Ordonnance marquée comme délivrée');
+    const handleDelivrer = async (id) => {
+        try {
+            await apiClient.put(`/ordonnances/${id}`, { statut: 'delivree' });
+            Alert.alert('Succès', 'Ordonnance marquée comme délivrée');
+            loadData();
+        } catch (error) {
+            console.error("Erreur livraison:", error);
+            Alert.alert('Erreur', "Impossible de marquer comme délivrée.");
+        }
     };
 
     const handleAnnuler = (id) => {
@@ -160,10 +168,14 @@ const OrdonnancesPage = () => {
                 {
                     text: 'Oui',
                     style: 'destructive',
-                    onPress: () => {
-                        setOrdonnances(ordonnances.map(ord =>
-                            ord.id === id ? { ...ord, statut: 'annulee' } : ord
-                        ));
+                    onPress: async () => {
+                        try {
+                            await apiClient.put(`/ordonnances/${id}`, { statut: 'annulee' });
+                            loadData();
+                        } catch (error) {
+                            console.error("Erreur annulation:", error);
+                            Alert.alert('Erreur', "Impossible d'annuler l'ordonnance.");
+                        }
                     },
                 },
             ]
@@ -188,6 +200,13 @@ const OrdonnancesPage = () => {
     return (
         <View style={styles.container}>
             <View style={styles.searchWrapper}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Gestion Ordonnances</Text>
+                    <TouchableOpacity style={styles.addCircleBtn} onPress={() => setShowAddModal(true)}>
+                        <Plus size={20} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+                
                 <View style={styles.searchBox}>
                     <Search color="#94A3B8" size={18} />
                     <TextInput
@@ -416,6 +435,30 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
     },
     searchWrapper: { padding: 20 },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '900',
+        color: '#1E2937',
+        letterSpacing: -0.5,
+    },
+    addCircleBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 14,
+        backgroundColor: '#10B981',
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6,
+        shadowColor: '#10B981',
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
     searchBox: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -458,18 +501,20 @@ const styles = StyleSheet.create({
     emptyText: { marginTop: 12, color: '#94A3B8', fontWeight: '700' },
     fab: {
         position: 'absolute',
-        right: 20,
-        bottom: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: '#10B981',
+        right: 24,
+        bottom: 110, // Remonté pour être au-dessus de la barre de navigation
+        width: 60,
+        height: 60,
+        borderRadius: 20,
+        backgroundColor: '#10B981', // Harmonisation avec le vert émeraude du pharmacien
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        elevation: 10,
+        shadowColor: '#10B981',
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        zIndex: 999,
     },
     modalOverlay: {
         flex: 1,

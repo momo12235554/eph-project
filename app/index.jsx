@@ -53,12 +53,13 @@ export default function Index() {
   const handleLoginSuccess = (authData) => {
     login(authData);
     setShowConnexion(false);
-    router.replace('/(pharma)/sc_phrm');
+    // Redirection forcée immédiate pour éviter les flashs 403
+    router.replace(authData.user.role === 'admin' ? '/(admin)/admin' : '/(pharma)/sc_phrm');
   };
   const handleAdminLoginSuccess = (authData) => {
     login(authData);
     setShowConnexionAdmin(false);
-    router.replace('/(admin)/admin');
+    router.replace(authData.user.role === 'admin' ? '/(admin)/admin' : '/(pharma)/sc_phrm');
   };
   const handleFournisseurLoginSuccess = (authData) => {
     login(authData);

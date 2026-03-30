@@ -21,9 +21,9 @@ import {
     Package,
     Bell,
     ChevronRight,
+    RefreshCw,
 } from 'lucide-react-native';
 import { MotiView } from 'moti';
-import { BlurView } from 'expo-blur';
 import { apiClient } from '../../src/services/apiClient';
 
 const AlertesPage = () => {
@@ -36,79 +36,45 @@ const AlertesPage = () => {
         fetchAlertes();
     }, []);
 
+    // ── Récupération des alertes depuis l'API backend ──
     const fetchAlertes = async () => {
+        setLoading(true);
         try {
-            const response = await apiClient.get('/medicaments');
-            const data = response.data.data || response.data;
+            const response = await apiClient.get('/alertes');
+            const data = response.data?.data || response.data || response;
 
             if (Array.isArray(data)) {
-                const alertesGenerees = [];
-                let idCounter = 1;
-
-                data.forEach(med => {
-                    const quantite = parseInt(med.quantite);
-                    if (quantite === 0) {
-                        alertesGenerees.push({
-                            id: idCounter++,
-                            type: 'rupture',
-                            titre: 'Rupture de stock',
-                            message: `${med.nom} - Stock épuisé`,
-                            medicament: med.nom,
-                            priorite: 'critique',
-                            statut: 'active',
-                            date: new Date().toLocaleString('fr-FR'),
-                            medicament_id: med.id,
-                        });
-                    } else if (quantite < 10) {
-                        alertesGenerees.push({
-                            id: idCounter++,
-                            type: 'stock_bas',
-                            titre: 'Stock très critique',
-                            message: `${med.nom} - Stock restant: ${quantite}`,
-                            medicament: med.nom,
-                            priorite: 'haute',
-                            statut: 'active',
-                            date: new Date().toLocaleString('fr-FR'),
-                            medicament_id: med.id,
-                        });
-                    } else if (quantite < 20) {
-                        alertesGenerees.push({
-                            id: idCounter++,
-                            type: 'stock_bas',
-                            titre: 'Stock critique',
-                            message: `${med.nom} - Stock restant: ${quantite}`,
-                            medicament: med.nom,
-                            priorite: 'moyenne',
-                            statut: 'active',
-                            date: new Date().toLocaleString('fr-FR'),
-                            medicament_id: med.id,
-                        });
-                    }
-
-                    if (med.date_expiration) {
-                        const dateExp = new Date(med.date_expiration);
-                        const aujourdhui = new Date();
-                        const diffMois = (dateExp - aujourdhui) / (1000 * 60 * 60 * 24 * 30);
-                        if (diffMois > 0 && diffMois < 3) {
-                            alertesGenerees.push({
-                                id: idCounter++,
-                                type: 'expiration_proche',
-                                titre: 'Expiration imminente',
-                                message: `${med.nom} expire (dans ${Math.round(diffMois)} mois)`,
-                                medicament: med.nom,
-                                priorite: diffMois < 1 ? 'haute' : 'moyenne',
-                                statut: 'active',
-                                date: new Date().toLocaleString('fr-FR'),
-                                medicament_id: med.id,
-                            });
-                        }
-                    }
-                });
-                setAlertes(alertesGenerees);
+                const alertesAffichees = data.map(al => ({
+                    id: al.id,
+                    type: al.type,
+                    titre: al.titre || 'Alerte',
+                    message: al.message || '',
+                    medicament: al.medicament ? al.medicament.nom : 'Inconnu',
+                    priorite: al.priorite || 'moyenne',
+                    statut: al.statut || 'active',
+                    date: al.created_at
+                        ? new Date(al.created_at).toLocaleString('fr-FR')
+                        : new Date().toLocaleString('fr-FR'),
+                    medicament_id: al.medicament_id,
+                }));
+                setAlertes(alertesAffichees);
             }
-            setLoading(false);
         } catch (error) {
+            console.error("Erreur chargement alertes:", error);
+        } finally {
             setLoading(false);
+        }
+    };
+
+    // ── Résoudre une alerte via l'API ──
+    const handleResoudre = async (id) => {
+        try {
+            await apiClient.call(`alertes/${id}/resoudre`, { method: 'PATCH' });
+            Alert.alert('Succès', 'Alerte résolue.');
+            fetchAlertes();
+        } catch (error) {
+            console.error("Erreur résolution alerte:", error);
+            Alert.alert('Erreur', "Impossible de résoudre l'alerte.");
         }
     };
 
@@ -117,6 +83,7 @@ const AlertesPage = () => {
             critique: { color: '#EF4444', bgColor: '#FEF2F2', label: 'Urgent' },
             haute: { color: '#F59E0B', bgColor: '#FFFBEB', label: 'Important' },
             moyenne: { color: '#3B82F6', bgColor: '#EFF6FF', label: 'Info' },
+            basse: { color: '#10B981', bgColor: '#ECFDF5', label: 'Faible' },
         };
         return configs[priorite] || configs.moyenne;
     };
@@ -146,7 +113,7 @@ const AlertesPage = () => {
                 </ScrollView>
             </View>
 
-            {/* Search */}
+            {/* Search + Refresh */}
             <View style={styles.searchSection}>
                 <View style={styles.searchBox}>
                     <Search color="#94A3B8" size={18} />
@@ -157,7 +124,27 @@ const AlertesPage = () => {
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
+                    <TouchableOpacity onPress={fetchAlertes} style={{ padding: 4 }}>
+                        <RefreshCw color="#6366F1" size={18} />
+                    </TouchableOpacity>
                 </View>
+            </View>
+
+            {/* Filter chips */}
+            <View style={styles.filterBar}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
+                    {['all', 'critique', 'haute', 'moyenne'].map(f => (
+                        <TouchableOpacity
+                            key={f}
+                            style={[styles.filterBtn, filterPriorite === f && styles.filterBtnActive]}
+                            onPress={() => setFilterPriorite(f)}
+                        >
+                            <Text style={[styles.filterText, filterPriorite === f && styles.filterTextActive]}>
+                                {f === 'all' ? 'Toutes' : getPrioriteConfig(f).label}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
             </View>
 
             {loading ? (
@@ -168,6 +155,7 @@ const AlertesPage = () => {
                         <View style={styles.empty}>
                             <CheckCircle size={48} color="#10B981" />
                             <Text style={styles.emptyText}>Tout est en ordre !</Text>
+                            <Text style={styles.emptySubText}>Aucune alerte active pour le moment.</Text>
                         </View>
                     ) : (
                         filteredAlertes.map((item, idx) => {
@@ -195,13 +183,17 @@ const AlertesPage = () => {
 
                                     <Text style={styles.cardMsg}>{item.message}</Text>
 
+                                    {item.medicament && item.medicament !== 'Inconnu' && (
+                                        <View style={styles.medChip}>
+                                            <Package size={12} color="#6366F1" />
+                                            <Text style={styles.medChipText}>{item.medicament}</Text>
+                                        </View>
+                                    )}
+
                                     <View style={styles.actions}>
-                                        <TouchableOpacity style={styles.btnAction}>
-                                            <Bell size={14} color="#6366F1" />
-                                            <Text style={styles.btnText}>Signaler</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity style={styles.btnActionSecondary}>
-                                            <Text style={styles.btnTextSecondary}>Ignorer</Text>
+                                        <TouchableOpacity style={styles.btnAction} onPress={() => handleResoudre(item.id)}>
+                                            <CheckCircle size={14} color="#10B981" />
+                                            <Text style={[styles.btnText, { color: '#10B981' }]}>Résoudre</Text>
                                         </TouchableOpacity>
                                     </View>
                                 </MotiView>
@@ -244,9 +236,14 @@ const styles = StyleSheet.create({
     statIcon: { width: 32, height: 32, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
     statValue: { fontSize: 22, fontWeight: '900' },
     statLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '700', textTransform: 'uppercase' },
-    searchSection: { paddingHorizontal: 20, marginBottom: 20 },
+    searchSection: { paddingHorizontal: 20, marginBottom: 12 },
     searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 16, height: 50, borderWidth: 1, borderColor: '#F1F5F9' },
     input: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '600', color: '#1E2937' },
+    filterBar: { marginBottom: 16 },
+    filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10, marginRight: 8, backgroundColor: '#fff', borderWidth: 1, borderColor: '#F1F5F9' },
+    filterBtnActive: { backgroundColor: '#6366F1', borderColor: '#6366F1' },
+    filterText: { fontSize: 12, color: '#64748B', fontWeight: '700' },
+    filterTextActive: { color: '#fff' },
     scroll: { flex: 1, paddingHorizontal: 20 },
     card: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 16, borderLeftWidth: 6, elevation: 3, shadowColor: '#000', shadowOpacity: 0.04 },
     cardHeader: { flexDirection: 'row', alignItems: 'center' },
@@ -256,13 +253,14 @@ const styles = StyleSheet.create({
     badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
     badgeText: { fontSize: 10, fontWeight: '800' },
     cardMsg: { fontSize: 14, color: '#475569', fontWeight: '500', marginTop: 15, lineHeight: 20 },
+    medChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, alignSelf: 'flex-start', marginTop: 10 },
+    medChipText: { fontSize: 12, color: '#6366F1', fontWeight: '700' },
     actions: { flexDirection: 'row', marginTop: 15, gap: 12 },
-    btnAction: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#EEF2FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
-    btnText: { fontSize: 13, color: '#6366F1', fontWeight: '700' },
-    btnActionSecondary: { paddingHorizontal: 16, paddingVertical: 8 },
-    btnTextSecondary: { fontSize: 13, color: '#94A3B8', fontWeight: '700' },
+    btnAction: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ECFDF5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
+    btnText: { fontSize: 13, fontWeight: '700' },
     empty: { padding: 50, alignItems: 'center' },
-    emptyText: { marginTop: 12, color: '#94A3B8', fontWeight: '700' },
+    emptyText: { marginTop: 12, color: '#10B981', fontWeight: '800', fontSize: 16 },
+    emptySubText: { marginTop: 4, color: '#94A3B8', fontWeight: '600', fontSize: 13 },
 });
 
 export default AlertesPage;

@@ -11,12 +11,18 @@ export const useCommandes = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const [cmdData, fournData] = await Promise.all([
+            const [cmdData, fournData] = await Promise.allSettled([
                 commandeService.getCommandes(),
                 commandeService.getFournisseurs()
             ]);
-            setCommandes(Array.isArray(cmdData?.data) ? cmdData.data : (Array.isArray(cmdData) ? cmdData : []));
-            setFournisseurs(Array.isArray(fournData?.data) ? fournData.data : (Array.isArray(fournData) ? fournData : []));
+            if (cmdData.status === 'fulfilled') {
+                const c = cmdData.value;
+                setCommandes(Array.isArray(c?.data) ? c.data : (Array.isArray(c) ? c : []));
+            }
+            if (fournData.status === 'fulfilled') {
+                const f = fournData.value;
+                setFournisseurs(Array.isArray(f?.data) ? f.data : (Array.isArray(f) ? f : []));
+            }
         } catch (err) {
             setError(err.message || 'Erreur lors du chargement des données');
         } finally {

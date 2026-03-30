@@ -12,15 +12,28 @@ export const useDashboard = () => {
         setIsLoading(true);
         setError(null);
         try {
-            const [statsData, alertesData, histoData] = await Promise.all([
+            const results = await Promise.allSettled([
                 dashboardService.getStats(),
                 dashboardService.getAlertes(),
                 dashboardService.getHistory()
             ]);
 
-            setStats(statsData?.data || statsData || {});
-            setAlertes(Array.isArray(alertesData?.data) ? alertesData.data : (Array.isArray(alertesData) ? alertesData : []));
-            setHistorique(Array.isArray(histoData?.data) ? histoData.data : (Array.isArray(histoData) ? histoData : []));
+            const [statsRes, alertesRes, histoRes] = results;
+
+            if (statsRes.status === 'fulfilled') {
+                const data = statsRes.value;
+                setStats(data?.data || data || {});
+            }
+
+            if (alertesRes.status === 'fulfilled') {
+                const data = alertesRes.value;
+                setAlertes(Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []));
+            }
+
+            if (histoRes.status === 'fulfilled') {
+                const data = histoRes.value;
+                setHistorique(Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []));
+            }
         } catch (err) {
             setError(err.message || 'Erreur dashboard');
         } finally {

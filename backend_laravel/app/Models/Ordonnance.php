@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Ordonnance extends Model
 {
     protected $table = 'ordonnances';
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'numero_ordonnance',

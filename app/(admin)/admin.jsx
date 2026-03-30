@@ -74,11 +74,18 @@ const AdminDashboard = () => {
   });
 
   useEffect(() => {
+    // Garde-fou crucial : on ne charge les données sensibles (commandes, users) 
+    // que si l'utilisateur est bien admin.
+    if (!user || user.role !== 'admin') {
+      console.warn("🔐 Accès Admin restreint - Redirection...");
+      return;
+    }
+
     loadDashboard();
     loadCommandes();
     loadUsers();
     loadMedicaments();
-  }, []);
+  }, [user]);
 
   const recentOrders = commandes.slice(0, 3);
   const displayUsers = users.slice(0, 3);
