@@ -17,31 +17,122 @@ Application mobile de gestion hospitalière développée dans le cadre d'un proj
 
 ## 🗂️ Structure du projet
 
-```
 EPH/
-├── app/                    # Routing Expo (file-based routing)
-│   ├── (auth)/             # Pages de connexion et inscription
-│   ├── (admin)/            # Interface administrateur
-│   ├── (pharma)/           # Interface pharmacien
-│   ├── (fournisseur)/      # Interface fournisseur
-│   └── index.jsx           # Page d'accueil
+├── app/                         # Frontend Expo / React Native
+│   ├── (admin)/                # Interfaces admin
+│   │   ├── _layout.tsx
+│   │   ├── admin.jsx
+│   │   ├── alertes_page.jsx
+│   │   ├── gs_medicament.jsx
+│   │   ├── gs_ordonnance.jsx
+│   │   ├── lance_alertes.jsx
+│   │   └── ordonnances_page.jsx
+│   │
+│   ├── (auth)/                 # Écrans de connexion
+│   │   ├── connexion.jsx
+│   │   ├── connexion_admin.jsx
+│   │   └── connexion_fournisseur.jsx
+│   │
+│   ├── (fournisseur)/          # Interface fournisseur
+│   │   ├── _layout.tsx
+│   │   └── fournisseur.jsx
+│   │
+│   ├── (pharma)/               # Interface pharmacien
+│   │   ├── _layout.tsx
+│   │   └── sc_phrm.jsx
+│   │
+│   ├── _layout.tsx             # Layout principal Expo Router
+│   ├── index.jsx               # Page d’accueil
+│   ├── propos.jsx              # À propos
+│   └── +not-found.tsx          # Gestion route inconnue
 │
-├── src/
-│   ├── services/           # Appels API (authService, medicamentService...)
-│   ├── components/         # Composants réutilisables
-│   ├── hooks/              # Hooks personnalisés
-│   ├── config/             # Configuration (URL API...)
-│   └── constants/          # Constantes globales
+├── assets/                     # Ressources statiques
+│   ├── fonts/
+│   ├── images/
+│   └── liste_medecament.xlsx
 │
-├── assets/                 # Images et icônes
-├── backend_laravel/        # Backend Laravel (API REST)
-│   ├── app/Models/         # Modèles (Medicament, Ordonnance, Commande...)
-│   ├── app/Http/Controllers/ # Contrôleurs API
-│   ├── routes/api.php      # Routes API
-│   └── database/migrations/# Migrations MySQL
+├── backend_laravel/            # Backend API Laravel
+│   ├── app/
+│   │   ├── Console/Commands/
+│   │   │   └── TestMailCommand.php
+│   │   │
+│   │   ├── Http/
+│   │   │   ├── Controllers/    # Contrôleurs métier/API
+│   │   │   │   ├── AlerteController.php
+│   │   │   │   ├── AuthController.php
+│   │   │   │   ├── CommandeController.php
+│   │   │   │   ├── ExportController.php
+│   │   │   │   ├── FournisseurController.php
+│   │   │   │   ├── HistoriqueController.php
+│   │   │   │   ├── MedicamentController.php
+│   │   │   │   ├── NotificationController.php
+│   │   │   │   ├── OrdonnanceController.php
+│   │   │   │   ├── StatsController.php
+│   │   │   │   └── UserController.php
+│   │   │   │
+│   │   │   └── Middleware/
+│   │   │       ├── Authenticate.php
+│   │   │       └── RoleMiddleware.php
+│   │   │
+│   │   ├── Mail/               # Envoi d’e-mails
+│   │   │   ├── CommandeFournisseurMail.php
+│   │   │   └── CommandeStatutMail.php
+│   │   │
+│   │   ├── Models/             # Modèles Eloquent
+│   │   │   ├── Alerte.php
+│   │   │   ├── Commande.php
+│   │   │   ├── Fournisseur.php
+│   │   │   ├── Historique.php
+│   │   │   ├── LigneCommande.php
+│   │   │   ├── Livraison.php
+│   │   │   ├── Medicament.php
+│   │   │   ├── Notification.php
+│   │   │   ├── Ordonnance.php
+│   │   │   └── User.php
+│   │   │
+│   │   ├── Observers/
+│   │   │   └── GlobalActionObserver.php
+│   │   │
+│   │   ├── Providers/
+│   │   │   └── AppServiceProvider.php
+│   │   │
+│   │   └── Traits/
+│   │       └── ApiResponse.php
+│   │
+│   ├── database/
+│   │   ├── factories/
+│   │   ├── migrations/         # Structure base de données
+│   │   └── seeders/            # Données de démonstration
+│   │
+│   ├── routes/
+│   │   ├── api.php             # Routes API principales
+│   │   ├── web.php
+│   │   └── console.php
+│   │
+│   ├── tests/
+│   │   ├── Feature/
+│   │   ├── Unit/
+│   │   └── TestCase.php
+│   │
+│   ├── config/
+│   ├── public/
+│   ├── resources/
+│   ├── storage/
+│   ├── bootstrap/
+│   ├── artisan
+│   ├── composer.json
+│   └── phpunit.xml
 │
-└── eph_db.sql              # Dump de la base de données MySQL
-```
+├── eph_db.sql                  # Export base de données
+├── app.json                    # Config Expo
+├── metro.config.js
+├── expo-env.d.ts
+├── build.bat
+├── build_log.txt
+├── export_log.txt
+├── dist/                       # Build/export
+├── node_modules/               # Dépendances frontend
+└── .git/                       # Historique Git
 
 ---
 
