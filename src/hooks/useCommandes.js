@@ -58,6 +58,19 @@ export const useCommandes = () => {
         }
     };
 
+    const cancelCommande = async (id, motif) => {
+        try {
+            await commandeService.cancelCommande(id, motif);
+            setCommandes(prev =>
+                prev.map(c => c.id === id ? { ...c, statut: 'annulee', commentaire: motif } : c)
+            );
+            return true;
+        } catch (err) {
+            setError(err.message);
+            return false;
+        }
+    };
+
     const addFournisseur = async (fournisseurData) => {
         try {
             await commandeService.addFournisseur(fournisseurData);
@@ -77,6 +90,7 @@ export const useCommandes = () => {
         loadData,
         createCommande,
         updateStatut,
+        cancelCommande,
         addFournisseur
     };
 };

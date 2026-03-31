@@ -10,13 +10,16 @@ export const commandeService = {
         return apiClient.post('commandes', commande);
     },
 
-    async updateStatus(id, statut) {
-        return apiClient.put(`commandes/${id}`, { statut });
+    async updateStatus(id, statut, commentaire = null) {
+        return apiClient.put(`commandes/${id}`, { statut, commentaire });
     },
 
     async validateDelivery(id, commentaire = 'Réception validée') {
-        // En vrai, on créerait une livraison, mais ici on update juste le statut pour le moment
         return apiClient.put(`commandes/${id}`, { statut: 'livree', commentaire });
+    },
+
+    async cancelCommande(id, motif) {
+        return apiClient.put(`commandes/${id}`, { statut: 'annulee', commentaire: motif });
     },
 
     // Fournisseurs

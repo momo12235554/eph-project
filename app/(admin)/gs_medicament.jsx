@@ -10,6 +10,7 @@ import {
   Modal,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { Plus, Search, Edit2, Trash2, Package, Hash, Tag, DollarSign, Calendar, ChevronRight, X } from 'lucide-react-native';
 import { MotiView, MotiText } from 'moti';
@@ -26,12 +27,12 @@ const GestionDesMedicaments = () => {
   const [newMedicament, setNewMedicament] = useState({
     nom: "",
     code: "",
-    codeBarre: "",
+    code_barre: "",
     lot: "",
     prix: "",
     quantite: "",
     categorie: "",
-    dateExpiration: "",
+    date_expiration: "",
   });
 
   useEffect(() => {
@@ -49,24 +50,26 @@ const GestionDesMedicaments = () => {
     }
 
     try {
-      let success = false;
+      let result = false;
       if (editIndex !== null) {
-        const medicamentToEdit = medicaments[editIndex];
-        success = await updateMedicament({ id: medicamentToEdit.id, ...newMedicament });
+        const medicamentToEdit = filteredMedicaments[editIndex];
+        result = await updateMedicament(medicamentToEdit.id, newMedicament);
       } else {
-        success = await addMedicament(newMedicament);
+        result = await addMedicament(newMedicament);
       }
 
-      if (success) {
+      if (result) {
         setModalVisible(false);
         setEditIndex(null);
         setErrorMessage("");
         loadMedicaments();
+        Alert.alert("Succès", editIndex !== null ? "Médicament mis à jour" : "Médicament ajouté");
       } else {
-        setErrorMessage(error || "Erreur lors de l'enregistrement");
+        setErrorMessage("Erreur : données invalides ou problème serveur");
       }
     } catch (err) {
       console.error(err);
+      setErrorMessage("Une erreur est survenue lors de l'enregistrement.");
     }
   };
 
@@ -80,8 +83,13 @@ const GestionDesMedicaments = () => {
           text: "Oui, supprimer",
           style: "destructive",
           onPress: async () => {
-            const medicamentToDelete = medicaments[index];
-            await removeMedicament(medicamentToDelete.id);
+            const medicamentToDelete = filteredMedicaments[index];
+            const result = await removeMedicament(medicamentToDelete.id);
+            if (!result) {
+              Alert.alert("Erreur", "Impossible de supprimer ce médicament. Il est probablement lié à des commandes.");
+            } else {
+              Alert.alert("Succès", "Médicament supprimé");
+            }
           },
         },
       ]
@@ -89,7 +97,8 @@ const GestionDesMedicaments = () => {
   };
 
   const editMedicament = (index) => {
-    setNewMedicament({ ...medicaments[index] });
+    const med = filteredMedicaments[index];
+    setNewMedicament({ ...med });
     setEditIndex(index);
     setErrorMessage("");
     setModalVisible(true);
@@ -113,7 +122,7 @@ const GestionDesMedicaments = () => {
         <TouchableOpacity 
           style={styles.headerAddBtn}
           onPress={() => {
-            setNewMedicament({ nom: "", code: "", codeBarre: "", lot: "", prix: "", quantite: "", categorie: "", dateExpiration: "" });
+            setNewMedicament({ nom: "", code: "", code_barre: "", lot: "", prix: "", quantite: "", categorie: "", date_expiration: "" });
             setEditIndex(null);
             setModalVisible(true);
           }}
@@ -163,7 +172,7 @@ const GestionDesMedicaments = () => {
                     <Text style={styles.medCode}>REF: {med.code}</Text>
                   </View>
                   <View style={styles.priceBadge}>
-                    <Text style={styles.priceText}>{med.prix} DA</Text>
+                    <Text style={styles.priceText}>{med.prix} €</Text>
                   </View>
                 </View>
 
@@ -172,7 +181,7 @@ const GestionDesMedicaments = () => {
                 <View style={styles.infoGrid}>
                   <InfoItem icon={<Hash size={12} color="#64748B" />} label="LOT" value={med.lot} />
                   <InfoItem icon={<Tag size={12} color="#64748B" />} label="CAT" value={med.categorie} />
-                  <InfoItem icon={<Calendar size={12} color="#64748B" />} label="EXP" value={med.dateExpiration} />
+                  <InfoItem icon={<Calendar size={12} color="#64748B" />} label="EXP" value={med.date_expiration} />
                 </View>
 
                 <View style={styles.cardFooter}>
@@ -216,13 +225,13 @@ const GestionDesMedicaments = () => {
                   <FormInput label="Code" value={newMedicament.code} onChange={(t) => setNewMedicament({...newMedicament, code: t})} placeholder="PRC-01" flex={1} />
                   <FormInput label="Numéro de Lot" value={newMedicament.lot} onChange={(t) => setNewMedicament({...newMedicament, lot: t})} placeholder="L-2024" flex={1} />
                 </View>
-                <FormInput label="Code Barre" value={newMedicament.codeBarre} onChange={(t) => setNewMedicament({...newMedicament, codeBarre: t})} placeholder="613..." />
+                <FormInput label="Code Barre" value={newMedicament.code_barre} onChange={(t) => setNewMedicament({...newMedicament, code_barre: t})} placeholder="613..." />
                 <View style={styles.row}>
-                  <FormInput label="Prix (DA)" value={newMedicament.prix} onChange={(t) => setNewMedicament({...newMedicament, prix: t})} placeholder="0.00" keyboard="numeric" flex={1} />
+                  <FormInput label="Prix (€)" value={newMedicament.prix} onChange={(t) => setNewMedicament({...newMedicament, prix: t})} placeholder="0.00" keyboard="numeric" flex={1} />
                   <FormInput label="Quantité" value={newMedicament.quantite} onChange={(t) => setNewMedicament({...newMedicament, quantite: t})} placeholder="0" keyboard="numeric" flex={1} />
                 </View>
                 <FormInput label="Catégorie" value={newMedicament.categorie} onChange={(t) => setNewMedicament({...newMedicament, categorie: t})} placeholder="Analgésique..." />
-                <FormInput label="Expiration (YYYY-MM-DD)" value={newMedicament.dateExpiration} onChange={(t) => setNewMedicament({...newMedicament, dateExpiration: t})} placeholder="2026-12-31" />
+                <FormInput label="Expiration (YYYY-MM-DD)" value={newMedicament.date_expiration} onChange={(t) => setNewMedicament({...newMedicament, date_expiration: t})} placeholder="2026-12-31" />
                 
                 {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
@@ -255,7 +264,7 @@ const FormInput = ({ label, value, onChange, placeholder, keyboard = "default", 
     <Text style={styles.label}>{label}</Text>
     <TextInput
       style={styles.input}
-      value={value}
+      value={value || ""} // Correction : Éviter les valeurs nulles
       onChangeText={onChange}
       placeholder={placeholder}
       placeholderTextColor="#94A3B8"
@@ -276,7 +285,18 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
   empty: { alignItems: 'center', paddingVertical: 60 },
   emptyText: { marginTop: 12, color: '#94A3B8', fontWeight: '600' },
-  card: { backgroundColor: '#fff', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', elevation: 2, shadowColor: '#000', shadowOpacity: 0.05 },
+  card: { 
+    backgroundColor: '#fff', 
+    borderRadius: 24, 
+    padding: 20, 
+    marginBottom: 16, 
+    borderWidth: 1, 
+    borderColor: '#F1F5F9',
+    ...Platform.select({
+      web: { boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' },
+      default: { elevation: 2, shadowColor: '#000', shadowOpacity: 0.05 }
+    })
+  },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
   iconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#ECFDF5', justifyContent: 'center', alignItems: 'center' },
   medName: { fontSize: 16, fontWeight: '800', color: '#1E2937' },

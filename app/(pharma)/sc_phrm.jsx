@@ -377,7 +377,7 @@ const PharmacienDashboard = () => {
 
               <View style={styles.menuFooter}>
                 <Text style={styles.versionText}>v2.0.0 Premium Pharma</Text>
-                <Text style={styles.versionSub}>CHU Mostaganem</Text>
+                <Text style={styles.versionSub}>GRAND CHU DE CORSE</Text>
               </View>
             </SafeAreaView>
           </MotiView>

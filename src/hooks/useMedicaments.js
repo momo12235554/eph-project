@@ -33,9 +33,9 @@ export const useMedicaments = () => {
         }
     };
 
-    const updateMedicament = async (medData) => {
+    const updateMedicament = async (id, medData) => {
         try {
-            await medicamentService.update(medData);
+            await medicamentService.update(id, medData);
             await loadMedicaments();
             return true;
         } catch (err) {

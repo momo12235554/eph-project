@@ -31,6 +31,7 @@ import {
   Search,
   X,
   Info,
+  Truck,
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,17 +62,36 @@ const AdminDashboard = () => {
   };
 
   const { stats, alertes, isLoading: dashLoading, loadDashboard } = useDashboard();
-  const { fournisseurs, commandes, isLoading: cmdLoading, loadData: loadCommandes, createCommande } = useCommandes();
-  const { users, isLoading: usersLoading, loadUsers } = useUsers();
+  const { fournisseurs, commandes, isLoading: cmdLoading, loadData: loadCommandes, createCommande, addFournisseur } = useCommandes();
+  const { users, isLoading: usersLoading, loadUsers, addUser } = useUsers();
   const { medicaments, loadMedicaments } = useMedicaments();
 
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
+  
   const [newOrder, setNewOrder] = useState({
     fournisseur_id: '',
     medicament_id: '',
     quantite: '',
     prix_unitaire: ''
   });
+
+  const [newUser, setNewUser] = useState({
+    nom: '',
+    prenom: '',
+    email: '',
+    password: '',
+    role: 'pharmacien',
+    service: ''
+  });
+
+  const [newSupplier, setNewSupplier] = useState({
+    nom: '',
+    email: '',
+    telephone: '',
+    adresse: ''
+  });
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
 
   useEffect(() => {
     // Garde-fou crucial : on ne charge les données sensibles (commandes, users) 
@@ -157,14 +177,14 @@ const AdminDashboard = () => {
           <StatItem 
             icon={<Box color="#2563EB" size={22} />} 
             label="Médicaments" 
-            value={stats.medicaments_count || 0} 
+            value={stats.medicaments_total || 0} 
             color="#EFF6FF"
           />
           <View style={styles.statDivider} />
           <StatItem 
             icon={<AlertTriangle color="#EF4444" size={22} />} 
             label="Alertes" 
-            value={stats.alertes_active || 0} 
+            value={stats.alertes_actives || 0} 
             color="#FEF2F2"
             valueColor="#EF4444"
           />
@@ -249,10 +269,43 @@ const AdminDashboard = () => {
 
               {activeNav === 'Utilisateurs' && (
                 <>
-                  <SectionHeader title="Gestion Utilisateurs" icon={<Plus size={18} color="#fff" />} />
+                  <SectionHeader 
+                    title="Gestion Utilisateurs" 
+                    icon={<Plus size={18} color="#fff" />} 
+                    onAction={() => setShowUserModal(true)}
+                  />
                   {users.map((u, index) => (
                     <UserCard key={u.id} user={u} full delay={index * 50} />
                   ))}
+                </>
+              )}
+              {activeNav === 'Fournisseurs' && (
+                <>
+                  <SectionHeader 
+                    title="Partenaires Fournisseurs" 
+                    icon={<Plus size={18} color="#fff" />} 
+                    onAction={() => setShowSupplierModal(true)}
+                  />
+                  {fournisseurs.length > 0 ? fournisseurs.map((f, index) => (
+                    <MotiView 
+                        key={f.id}
+                        from={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 50 }}
+                        style={styles.itemCard}
+                    >
+                        <View style={styles.itemIconBox}>
+                            <Truck color="#2563EB" size={20} />
+                        </View>
+                        <View style={styles.itemInfo}>
+                            <Text style={styles.itemName}>{f.nom}</Text>
+                            <Text style={styles.itemSubText}>{f.email} • ID: {f.id}</Text>
+                            <Text style={styles.itemSecondaryText}>{f.adresse || 'Aucune adresse'}</Text>
+                        </View>
+                    </MotiView>
+                  )) : (
+                    <EmptyState message="Aucun fournisseur enregistré" />
+                  )}
                 </>
               )}
             </MotiView>
@@ -273,16 +326,44 @@ const AdminDashboard = () => {
             <Text style={styles.modalTitle}>Nouvelle Commande</Text>
             
             <ScrollView showsVerticalScrollIndicator={false}>
-              <InputLabel label="Identifiant Fournisseur" />
-              <TextInput 
-                style={styles.modalInput} 
-                placeholder="ID du fournisseur" 
-                value={newOrder.fournisseur_id}
-                onChangeText={(t) => setNewOrder({...newOrder, fournisseur_id: t})}
-                placeholderTextColor="#9CA3AF"
-              />
+               <InputLabel label="Identifiant Fournisseur (ID ou Nom)" />
+               <TextInput 
+                 style={styles.modalInput} 
+                 placeholder="Chercher par nom ou ID..." 
+                 value={newOrder.fournisseur_id}
+                 onChangeText={(t) => setNewOrder({...newOrder, fournisseur_id: t})}
+                 placeholderTextColor="#9CA3AF"
+               />
+               
+               {/* Suggestions de Fournisseurs */}
+               <View style={[styles.tagScrollContainer, { marginTop: 8 }]}>
+                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                   {fournisseurs
+                     .filter(f => 
+                       f.nom.toLowerCase().includes(newOrder.fournisseur_id.toLowerCase()) || 
+                       f.id.toString().includes(newOrder.fournisseur_id)
+                     )
+                     .slice(0, 5)
+                     .map(f => (
+                       <TouchableOpacity 
+                         key={f.id}
+                         onPress={() => setNewOrder({...newOrder, fournisseur_id: f.id.toString()})}
+                         style={[
+                           styles.medicineTag, 
+                           newOrder.fournisseur_id == f.id && styles.medicineTagActive,
+                           { backgroundColor: '#F0F9FF' }
+                         ]}
+                       >
+                         <Text style={[styles.medicineTagText, newOrder.fournisseur_id == f.id && styles.medicineTagTextActive, { color: '#0369A1' }]}>
+                           {f.nom} (ID: {f.id})
+                         </Text>
+                       </TouchableOpacity>
+                     ))
+                   }
+                 </ScrollView>
+               </View>
 
-              <InputLabel label="Médicament" />
+               <InputLabel label="Médicament" />
               <View style={styles.tagScrollContainer}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {medicaments.slice(0, 8).map(m => (
@@ -319,7 +400,7 @@ const AdminDashboard = () => {
                   />
                 </View>
                 <View style={styles.flex1}>
-                  <InputLabel label="Prix Unit. (DA)" />
+                  <InputLabel label="Prix Unit. (€)" />
                   <TextInput 
                     style={styles.modalInput} 
                     keyboardType="numeric"
@@ -366,6 +447,229 @@ const AdminDashboard = () => {
         </View>
       </Modal>
 
+      {/* Modal Ajout Utilisateur */}
+      <Modal visible={showUserModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+          <MotiView 
+            from={{ translateY: 400 }}
+            animate={{ translateY: 0 }}
+            style={styles.modalCard}
+          >
+            <View style={styles.modalIndicator} />
+            <Text style={styles.modalTitle}>Nouveau Membre</Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.row}>
+                <View style={styles.flex1}>
+                  <InputLabel label="Nom" />
+                  <TextInput 
+                    style={styles.modalInput} 
+                    placeholder="Nom" 
+                    value={newUser.nom}
+                    onChangeText={(t) => setNewUser({...newUser, nom: t})}
+                  />
+                </View>
+                <View style={styles.flex1}>
+                  <InputLabel label="Prénom" />
+                  <TextInput 
+                    style={styles.modalInput} 
+                    placeholder="Prénom" 
+                    value={newUser.prenom}
+                    onChangeText={(t) => setNewUser({...newUser, prenom: t})}
+                  />
+                </View>
+              </View>
+
+              <InputLabel label="Email Professionnel" />
+              <TextInput 
+                style={styles.modalInput} 
+                keyboardType="email-address"
+                placeholder="email@chu-corse.fr" 
+                value={newUser.email}
+                onChangeText={(t) => setNewUser({...newUser, email: t})}
+                autoCapitalize="none"
+              />
+
+              <InputLabel label="Mot de passe" />
+              <TextInput 
+                style={styles.modalInput} 
+                secureTextEntry
+                placeholder="••••••••" 
+                value={newUser.password}
+                onChangeText={(t) => setNewUser({...newUser, password: t})}
+              />
+
+              <InputLabel label="Rôle" />
+              <View style={styles.tagScrollContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {['admin', 'pharmacien', 'fournisseur'].map(role => (
+                    <TouchableOpacity 
+                      key={role}
+                      onPress={() => setNewUser({...newUser, role})}
+                      style={[
+                        styles.medicineTag, 
+                        newUser.role === role && styles.medicineTagActive
+                      ]}
+                    >
+                      <Text style={[styles.medicineTagText, newUser.role === role && styles.medicineTagTextActive]}>
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <InputLabel label="Service / Entreprise" />
+              <TextInput 
+                style={styles.modalInput} 
+                placeholder="ex: Pharmacie Centrale" 
+                value={newUser.service}
+                onChangeText={(t) => setNewUser({...newUser, service: t})}
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowUserModal(false)}>
+                  <Text style={styles.cancelBtnText}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.confirmBtn} 
+                  onPress={async () => {
+                    console.log("🚀 Tentative d'ajout d'utilisateur :", newUser);
+
+                    const emailTrimmed = newUser.email.trim();
+                    const prenomTrimmed = newUser.prenom.trim();
+                    const nomTrimmed = newUser.nom.trim();
+
+                    if(!nomTrimmed || !emailTrimmed || !newUser.password) {
+                      Alert.alert('Erreur', 'Veuillez remplir les champs obligatoires (Nom, Email, Mot de passe).');
+                      return;
+                    }
+
+                    // Validation locale basique de l'email
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(emailTrimmed)) {
+                      Alert.alert('Erreur', 'L\'adresse email saisie n\'est pas valide. Exemple : nom@chu.dz');
+                      return;
+                    }
+
+                    if (newUser.password.length < 6) {
+                      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères.');
+                      return;
+                    }
+
+                    const dataToSend = {
+                      ...newUser,
+                      nom: nomTrimmed,
+                      prenom: prenomTrimmed,
+                      email: emailTrimmed
+                    };
+
+                    try {
+                      const res = await addUser(dataToSend);
+                      console.log("📡 Réponse serveur addUser :", res);
+                      if(res) {
+                        setShowUserModal(false);
+                        setNewUser({nom: '', prenom: '', email: '', password: '', role: 'pharmacien', service: ''});
+                        Alert.alert('Succès', 'Utilisateur créé avec succès');
+                        loadUsers();
+                      } else {
+                        Alert.alert('Erreur', 'Impossible de créer l\'utilisateur (voir console)');
+                      }
+                    } catch (error) {
+                      console.error("❌ Erreur critique addUser:", error);
+                      Alert.alert('Erreur', error.message || 'Une erreur est survenue lors de l\'ajout.');
+                    }
+                  }}
+                >
+                  <LinearGradient colors={['#10B981', '#059669']} style={styles.confirmGradient}>
+                    <Text style={styles.confirmBtnText}>Enregistrer</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </MotiView>
+        </View>
+      </Modal>
+
+      {/* Modal Ajout Fournisseur */}
+      <Modal visible={showSupplierModal} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+          <MotiView 
+            from={{ translateY: 400 }}
+            animate={{ translateY: 0 }}
+            style={styles.modalCard}
+          >
+            <View style={styles.modalIndicator} />
+            <Text style={styles.modalTitle}>Nouveau Fournisseur</Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <InputLabel label="Nom de l'entreprise" />
+              <TextInput 
+                style={styles.modalInput} 
+                placeholder="Nom complet" 
+                value={newSupplier.nom}
+                onChangeText={(t) => setNewSupplier({...newSupplier, nom: t})}
+              />
+
+              <InputLabel label="Email de contact" />
+              <TextInput 
+                style={styles.modalInput} 
+                keyboardType="email-address"
+                placeholder="contact@entreprise.dz" 
+                value={newSupplier.email}
+                onChangeText={(t) => setNewSupplier({...newSupplier, email: t})}
+                autoCapitalize="none"
+              />
+
+              <InputLabel label="Téléphone" />
+              <TextInput 
+                style={styles.modalInput} 
+                keyboardType="phone-pad"
+                placeholder="027..." 
+                value={newSupplier.telephone}
+                onChangeText={(t) => setNewSupplier({...newSupplier, telephone: t})}
+              />
+
+              <InputLabel label="Adresse" />
+              <TextInput 
+                style={styles.modalInput} 
+                placeholder="Adresse complète" 
+                value={newSupplier.adresse}
+                onChangeText={(t) => setNewSupplier({...newSupplier, adresse: t})}
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowSupplierModal(false)}>
+                  <Text style={styles.cancelBtnText}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                   style={styles.confirmBtn} 
+                   onPress={async () => {
+                     try {
+                        const res = await addFournisseur(newSupplier);
+                        if(res) {
+                          setShowSupplierModal(false);
+                          setNewSupplier({nom: '', email: '', telephone: '', adresse: ''});
+                          Alert.alert('Succès', 'Fournisseur ajouté avec succès');
+                          loadCommandes();
+                        }
+                     } catch (e) {
+                       Alert.alert('Erreur', e.message);
+                     }
+                   }}
+                >
+                  <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.confirmGradient}>
+                    <Text style={styles.confirmBtnText}>Ajouter</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </MotiView>
+        </View>
+      </Modal>
+
       {/* Menu Modal Premium */}
       <Modal visible={showMenuModal} animationType="fade" transparent>
         <View style={styles.menuOverlay}>
@@ -393,7 +697,7 @@ const AdminDashboard = () => {
 
               <View style={styles.menuFooter}>
                 <Text style={styles.versionText}>v2.0.0 Premium Admin</Text>
-                <Text style={styles.versionSub}>CHU Mostaganem</Text>
+                <Text style={styles.versionSub}>GRAND CHU DE CORSE</Text>
               </View>
             </SafeAreaView>
           </MotiView>
@@ -404,6 +708,7 @@ const AdminDashboard = () => {
       <View style={styles.bottomNav}>
         <NavItem icon={<Home size={22} />} label="Accueil" active={activeNav === 'Accueil'} onPress={() => setActiveNav('Accueil')} />
         <NavItem icon={<ClipboardList size={22} />} label="Commandes" active={activeNav === 'Commandes'} onPress={() => setActiveNav('Commandes')} />
+        <NavItem icon={<Truck size={22} />} label="Fournisseurs" active={activeNav === 'Fournisseurs'} onPress={() => setActiveNav('Fournisseurs')} />
         <NavItem icon={<Users size={22} />} label="Équipe" active={activeNav === 'Utilisateurs'} onPress={() => setActiveNav('Utilisateurs')} />
       </View>
     </View>
@@ -444,24 +749,58 @@ const SectionHeader = ({ title, action, icon, onAction }) => (
   </View>
 );
 
-const OrderCard = ({ order, delay, full }) => (
-  <MotiView 
-    from={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={{ delay }}
-    style={styles.itemCard}
-  >
-    <View style={styles.cardAccent} />
-    <View style={styles.itemInfo}>
-      <Text style={styles.itemName} numberOfLines={1}>{order.medicament_nom || 'Commande #' + order.id}</Text>
-      <Text style={styles.itemSubText}>Qté: {order.quantite || '0'} • {full ? new Date(order.created_at).toLocaleDateString() : 'Aujourd\'hui'}</Text>
-      {full && <Text style={styles.itemSecondaryText}>Fournisseur: {order.fournisseur?.nom || 'N/A'}</Text>}
-    </View>
-    <View style={[styles.statusBadge, order.statut === 'En attente' ? styles.statusPending : styles.statusCompleted]}>
-      <Text style={[styles.statusText, order.statut === 'En attente' ? styles.statusTextPending : styles.statusTextCompleted]}>{order.statut}</Text>
-    </View>
-  </MotiView>
-);
+const OrderCard = ({ order, delay, full }) => {
+  // Le backend Laravel retourne un tableau de lignes pour chaque commande
+  const lignes = order.ligne_commandes || order.ligneCommandes;
+  const quantite = lignes && lignes.length > 0 ? lignes[0].quantite : (order.quantite || '0');
+  const medicamentNom = lignes && lignes.length > 0 && lignes[0].medicament 
+    ? lignes[0].medicament.nom 
+    : (order.medicament_nom || 'Commande #' + order.id);
+
+  // Calcul du montant si montant_total est absent ou nul
+  let amount = Number(order.montant_total) || 0;
+  if (amount === 0 && lignes && lignes.length > 0) {
+    amount = lignes.reduce((acc, l) => acc + (Number(l.quantite) * (Number(l.prix_unitaire) || Number(l.medicament?.prix) || 0)), 0);
+  }
+
+  const getStatusStyles = (statut) => {
+    const s = statut?.toLowerCase();
+    if (s === 'en_attente' || s === 'en attente') return { badge: styles.statusPending, text: styles.statusTextPending, label: 'En attente' };
+    if (s === 'annulee' || s === 'annulée') return { badge: styles.statusCancelled, text: styles.statusTextCancelled, label: 'Annulée' };
+    return { badge: styles.statusCompleted, text: styles.statusTextCompleted, label: statut };
+  };
+
+  const statusInfo = getStatusStyles(order.statut);
+
+  return (
+    <MotiView 
+      from={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay }}
+      style={styles.itemCard}
+    >
+      <View style={styles.cardAccent} />
+      <View style={styles.itemInfo}>
+        <Text style={styles.itemName} numberOfLines={1}>{medicamentNom}</Text>
+        <Text style={styles.itemSubText}>Qté: {quantite} • {full ? new Date(order.created_at).toLocaleDateString() : 'Aujourd\'hui'}</Text>
+        {full && <Text style={styles.itemSecondaryText}>Fournisseur: {order.fournisseur?.nom || 'N/A'}</Text>}
+        <Text style={[styles.itemSubText, { color: '#2563EB', fontWeight: '800' }]}>{amount.toLocaleString()} €</Text>
+        
+        {/* Affichage du motif d'annulation si présent */}
+        {(order.statut === 'annulee' && order.commentaire) && (
+          <Text style={[styles.itemSecondaryText, { color: '#EF4444', fontStyle: 'italic', marginTop: 4 }]}>
+            Motif: {order.commentaire}
+          </Text>
+        )}
+      </View>
+      <View style={[styles.statusBadge, statusInfo.badge]}>
+        <Text style={[styles.statusText, statusInfo.text]}>
+          {statusInfo.label}
+        </Text>
+      </View>
+    </MotiView>
+  );
+};
 
 const UserCard = ({ user, delay, full }) => (
   <MotiView 
@@ -760,6 +1099,9 @@ const styles = StyleSheet.create({
   statusCompleted: {
     backgroundColor: '#F0FDF4',
   },
+  statusCancelled: {
+    backgroundColor: '#FEF2F2',
+  },
   statusText: {
     fontSize: 10,
     fontWeight: '900',
@@ -770,6 +1112,9 @@ const styles = StyleSheet.create({
   },
   statusTextCompleted: {
     color: '#15803D',
+  },
+  statusTextCancelled: {
+    color: '#EF4444',
   },
   avatarSmall: {
     width: 44,

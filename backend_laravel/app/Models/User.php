@@ -15,7 +15,7 @@ class User extends Authenticatable
      * Colonnes de notre table users personnalisée
      */
     protected $fillable = [
-        'username', 'password', 'role', 'nom', 'prenom', 'email',
+        'nom', 'prenom', 'email', 'password', 'role', 'service', 'telephone',
     ];
 
     protected $hidden = [

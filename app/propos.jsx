@@ -56,7 +56,7 @@ const InfoScreen = () => {
             <Text style={styles.infoLabel}>À PROPOS DE NOUS</Text>
           </View>
           <Text style={styles.paragraph}>
-            MediStock est une plateforme de pointe dédiée à l'excellence opérationnelle du <Text style={styles.boldText}>CHU Mostaganem</Text>. 
+            MediStock est une plateforme de pointe dédiée à l'excellence opérationnelle du <Text style={styles.boldText}>GRAND CHU DE CORSE</Text>. 
             Conçue pour transformer la gestion pharmaceutique, notre application assure une traçabilité sans faille, de l'approvisionnement à la distribution.
           </Text>
 
@@ -91,7 +91,7 @@ const InfoScreen = () => {
           style={styles.footer}
         >
           <Text style={styles.footerText}>Version 2.0.0 • 2024</Text>
-          <Text style={styles.footerText}>Dévéloppé pour le CHU de Mostaganem</Text>
+          <Text style={styles.footerText}>Développé pour le GRAND CHU DE CORSE</Text>
         </MotiView>
       </ScrollView>
     </View>

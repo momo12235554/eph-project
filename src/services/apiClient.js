@@ -57,7 +57,16 @@ export const apiClient = {
             }
             const errorData = await response.json().catch(() => ({}));
             console.error("❌ [apiClient] ERREUR SERVEUR DÉTECTÉE :", response.status, errorData);
-            throw new Error(errorData.message || `Erreur serveur (${response.status})`);
+            
+            // Si c'est une erreur 422, on construit un message avec les champs fautifs
+            let errorMsg = errorData.message || `Erreur serveur (${response.status})`;
+            if (response.status === 422 && errorData.errors) {
+                const firstErrorField = Object.keys(errorData.errors)[0];
+                const firstErrorMsg = errorData.errors[firstErrorField][0];
+                errorMsg = firstErrorMsg; // ex: "L'e-mail a déjà été pris."
+            }
+            
+            throw new Error(errorMsg);
         }
 
         return response.json();

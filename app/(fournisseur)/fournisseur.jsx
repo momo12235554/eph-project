@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  TextInput,
 } from 'react-native';
 import { 
   Bell, 
@@ -46,7 +47,10 @@ const FournisseurDashboard = () => {
   const [activeTab, setActiveTab] = useState('Fournisseur');
   const [currentSubTab, setCurrentSubTab] = useState('Commandes');
   const [showMenuModal, setShowMenuModal] = useState(false);
-  const { commandes, isLoading, loadData, updateStatut } = useCommandes();
+  const [cancelModal, setCancelModal] = useState({ visible: false, commandeId: null });
+  const [motifAnnulation, setMotifAnnulation] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+  const { commandes, isLoading, loadData, updateStatut, cancelCommande } = useCommandes();
 
   useEffect(() => {
     loadData();
@@ -61,12 +65,33 @@ const FournisseurDashboard = () => {
     { label: 'Total', value: commandes.length, icon: <Package size={16} color="#6366F1" />, bg: '#EEF2FF' },
   ];
 
-  const handleStatutUpdate = async (id, status) => {
-    const success = await updateStatut(id, status);
+  const handleValiderLivraison = async (id) => {
+    const success = await updateStatut(id, 'livree');
     if (success) {
-      Alert.alert('Succès', `Statut mis à jour vers : ${status}`);
+      Alert.alert('✅ Livraison validée', 'L\'administrateur a été notifié par e-mail.');
     } else {
-      Alert.alert('Erreur', 'Impossible de mettre à jour le statut');
+      Alert.alert('Erreur', 'Impossible de valider la livraison.');
+    }
+  };
+
+  const openCancelModal = (id) => {
+    setMotifAnnulation('');
+    setCancelModal({ visible: true, commandeId: id });
+  };
+
+  const handleConfirmAnnulation = async () => {
+    if (!motifAnnulation.trim()) {
+      Alert.alert('Motif requis', 'Veuillez saisir un motif d\'annulation avant de confirmer.');
+      return;
+    }
+    setIsCancelling(true);
+    const success = await cancelCommande(cancelModal.commandeId, motifAnnulation.trim());
+    setIsCancelling(false);
+    setCancelModal({ visible: false, commandeId: null });
+    if (success) {
+      Alert.alert('❌ Commande annulée', 'L\'administrateur a été notifié du motif d\'annulation par e-mail.');
+    } else {
+      Alert.alert('Erreur', 'Impossible d\'annuler la commande.');
     }
   };
 
@@ -84,50 +109,83 @@ const FournisseurDashboard = () => {
           <Text style={styles.emptyText}>Aucune commande en attente</Text>
         </View>
       ) : (
-        pendingOrders.map((order, index) => (
-          <MotiView 
-            key={order.id}
-            from={{ opacity: 0, translateX: -20 }}
-            animate={{ opacity: 1, translateX: 0 }}
-            transition={{ delay: index * 100 }}
-            style={styles.orderCard}
-          >
-            <View style={styles.cardHeader}>
-              <View>
-                <Text style={styles.orderID}>CMD #{order.id}</Text>
-                <Text style={styles.orderDate}>{order.date_commande}</Text>
-              </View>
-              <View style={styles.badgePending}>
-                <Text style={styles.badgeTextPending}>À Traiter</Text>
-              </View>
-            </View>
+        pendingOrders.map((order, index) => {
+          const lignes = order.ligne_commandes || order.ligneCommandes;
+          const quantite = lignes && lignes.length > 0 ? lignes[0].quantite : (order.quantite || '0');
+          const medicamentNom = lignes && lignes.length > 0 && lignes[0].medicament 
+            ? lignes[0].medicament.nom 
+            : (order.medicament_nom || 'Articles');
 
-            <View style={styles.amountBox}>
-              <Text style={styles.amountLabel}>Montant à Facturer</Text>
-              <Text style={styles.amountValue}>{order.montant_total?.toLocaleString()} DA</Text>
-            </View>
+            // Calcul automatique si le montant n'a pas été défini
+            let computedAmount = Number(order.montant_total) || 0;
+            if (computedAmount === 0) {
+              computedAmount = lignes && lignes.length > 0 ? 
+                  lignes.reduce((sum, ligne) => sum + (Number(ligne.quantite) * (Number(ligne.prix_unitaire) || Number(ligne.medicament?.prix) || 0)), 0) 
+                  : 0;
+            }
+
+            let prixUnitaire = lignes && lignes.length > 0 ? (Number(lignes[0].prix_unitaire) || Number(lignes[0].medicament?.prix) || 0) : 0;
+
+            return (
+            <MotiView 
+              key={order.id}
+              from={{ opacity: 0, translateX: -20 }}
+              animate={{ opacity: 1, translateX: 0 }}
+              transition={{ delay: index * 100 }}
+              style={styles.orderCard}
+            >
+              <View style={styles.cardHeader}>
+                <View>
+                  <Text style={styles.orderID}>CMD #{order.id} - {medicamentNom}</Text>
+                  <Text style={styles.orderDate}>{order.date_commande}  •  Qté: {quantite}  •  Unité: {prixUnitaire} €</Text>
+                </View>
+                <View style={styles.badgePending}>
+                  <Text style={styles.badgeTextPending}>À Traiter</Text>
+                </View>
+              </View>
+
+              <View style={styles.amountBox}>
+                <Text style={styles.amountLabel}>Montant Total à Facturer</Text>
+                <Text style={styles.amountValue}>{computedAmount.toLocaleString()} €</Text>
+              </View>
 
             <View style={styles.actionGrid}>
-              <TouchableOpacity style={styles.btnDeliver} onPress={() => handleStatutUpdate(order.id, 'livree')}>
+              <TouchableOpacity style={styles.btnDeliver} onPress={() => handleValiderLivraison(order.id)}>
                 <LinearGradient colors={['#10B981', '#059669']} style={styles.btnGrad}>
                   <CheckCircle color="#fff" size={16} style={{ marginRight: 6 }} />
                   <Text style={styles.btnText}>Valider Livraison</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.btnCancel} onPress={() => handleStatutUpdate(order.id, 'annulee')}>
+              <TouchableOpacity style={styles.btnCancel} onPress={() => openCancelModal(order.id)}>
                 <XCircle color="#EF4444" size={16} style={{ marginRight: 6 }} />
                 <Text style={styles.btnTextCancel}>Annuler</Text>
               </TouchableOpacity>
             </View>
           </MotiView>
-        ))
+          );
+        })
       )}
 
       <View style={[styles.sectionHeader, { marginTop: 25 }]}>
         <Text style={styles.sectionTitle}>Dernières Livraisons</Text>
       </View>
 
-      {deliveredOrders.slice(0, 4).map((hist, index) => (
+      {deliveredOrders.slice(0, 4).map((hist, index) => {
+        const lignes = hist.ligne_commandes || hist.ligneCommandes;
+        const quantite = lignes && lignes.length > 0 ? lignes[0].quantite : (hist.quantite || '0');
+        const medicamentNom = lignes && lignes.length > 0 && lignes[0].medicament 
+          ? lignes[0].medicament.nom 
+          : (hist.medicament_nom || 'Articles');
+
+        // Calcul du montant pour l'historique aussi
+        let computedHistoryAmount = Number(hist.montant_total) || 0;
+        if (computedHistoryAmount === 0) {
+             computedHistoryAmount = lignes && lignes.length > 0 ? 
+                 lignes.reduce((sum, ligne) => sum + (Number(ligne.quantite) * (Number(ligne.prix_unitaire) || Number(ligne.medicament?.prix) || 0)), 0) 
+                 : 0;
+        }
+
+        return (
         <MotiView 
           key={hist.id}
           from={{ opacity: 0 }}
@@ -139,12 +197,13 @@ const FournisseurDashboard = () => {
             <CheckCircle color="#10B981" size={20} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.historyTitle}>Commande #{hist.id}</Text>
-            <Text style={styles.historySub}>{hist.date_commande} • {hist.montant_total} DA</Text>
+            <Text style={styles.historyTitle}>CMD #{hist.id} - {medicamentNom}</Text>
+            <Text style={styles.historySub}>{hist.date_commande} • Qté: {quantite} • {computedHistoryAmount.toLocaleString()} €</Text>
           </View>
           <ChevronRight size={18} color="#CBD5E1" />
         </MotiView>
-      ))}
+        );
+      })}
     </>
   );
 
@@ -193,7 +252,7 @@ const FournisseurDashboard = () => {
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.historyTitle}>Camion #02 - En route</Text>
-          <Text style={styles.historySub}>Destination: CHU Mostaganem (Arrivée estimée: 10 min)</Text>
+          <Text style={styles.historySub}>Destination: GRAND CHU DE CORSE (Arrivée estimée: 10 min)</Text>
         </View>
       </View>
       <View style={styles.historyItem}>
@@ -239,7 +298,7 @@ const FournisseurDashboard = () => {
             <View>
               <Text style={styles.greetingLabel}>Espace Partenaire</Text>
               <Text style={styles.providerName}>{user ? user.nom : 'Fournisseur'}</Text>
-              <Text style={styles.companyName}>{user ? user.entreprise || 'EPH CHU Mostaganem' : 'PharmaCorp Algeria'}</Text>
+              <Text style={styles.companyName}>{user ? user.entreprise || 'EPH GRAND CHU DE CORSE' : 'PharmaCorp Algeria'}</Text>
             </View>
           </View>
 
@@ -318,6 +377,55 @@ const FournisseurDashboard = () => {
                 <Text style={styles.versionSub}>Développé par Antigravity pour EPH</Text>
               </View>
             </SafeAreaView>
+          </MotiView>
+        </View>
+      </Modal>
+
+      {/* Modal Motif d'Annulation */}
+      <Modal visible={cancelModal.visible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <MotiView
+            from={{ translateY: 100, opacity: 0 }}
+            animate={{ translateY: 0, opacity: 1 }}
+            transition={{ type: 'timing', duration: 300 }}
+            style={styles.cancelModalBox}
+          >
+            <View style={styles.cancelModalHeader}>
+              <XCircle color="#EF4444" size={28} />
+              <Text style={styles.cancelModalTitle}>Motif d'annulation</Text>
+            </View>
+            <Text style={styles.cancelModalDesc}>
+              Veuillez indiquer la raison pour laquelle cette commande ne peut pas être acceptée. L'administrateur sera notifié par e-mail.
+            </Text>
+            <TextInput
+              style={styles.motifInput}
+              placeholder="Ex: Rupture de stock de notre côté, délai de livraison impossible..."
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={4}
+              value={motifAnnulation}
+              onChangeText={setMotifAnnulation}
+              textAlignVertical="top"
+            />
+            <View style={styles.cancelModalActions}>
+              <TouchableOpacity
+                style={styles.cancelModalBtnBack}
+                onPress={() => setCancelModal({ visible: false, commandeId: null })}
+                disabled={isCancelling}
+              >
+                <Text style={styles.cancelModalBtnBackText}>Retour</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cancelModalBtnConfirm, isCancelling && { opacity: 0.6 }]}
+                onPress={handleConfirmAnnulation}
+                disabled={isCancelling}
+              >
+                {isCancelling
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.cancelModalBtnConfirmText}>Confirmer l'annulation</Text>
+                }
+              </TouchableOpacity>
+            </View>
           </MotiView>
         </View>
       </Modal>
@@ -774,6 +882,83 @@ const styles = StyleSheet.create({
     color: '#4338CA',
     fontWeight: '600',
     lineHeight: 18,
+  },
+  // Modal annulation
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  cancelModalBox: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 28,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 28,
+    elevation: 30,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+  },
+  cancelModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  cancelModalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#1E2937',
+  },
+  cancelModalDesc: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  motifInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    color: '#1E2937',
+    fontWeight: '500',
+    minHeight: 100,
+    marginBottom: 20,
+  },
+  cancelModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelModalBtnBack: {
+    flex: 1,
+    height: 52,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelModalBtnBackText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  cancelModalBtnConfirm: {
+    flex: 2,
+    height: 52,
+    backgroundColor: '#EF4444',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelModalBtnConfirmText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#fff',
   },
 });
 

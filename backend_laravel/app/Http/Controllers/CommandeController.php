@@ -51,9 +51,20 @@ class CommandeController extends Controller
                 }
 
                 $commande->update(['montant_total' => $montantTotal]);
+                $commande->load(['fournisseur', 'ligneCommandes.medicament']);
+
+                // Envoyer l'email au fournisseur si son adresse est renseignée
+                if ($commande->fournisseur && $commande->fournisseur->email) {
+                    try {
+                        \Illuminate\Support\Facades\Mail::to($commande->fournisseur->email)
+                            ->send(new \App\Mail\CommandeFournisseurMail($commande));
+                    } catch (\Exception $e) {
+                         \Illuminate\Support\Facades\Log::error("Erreur d'envoi mail fournisseur: " . $e->getMessage());
+                    }
+                }
 
                 return $this->successResponse(
-                    $commande->load(['fournisseur', 'ligneCommandes.medicament']),
+                    $commande,
                     'Commande créée avec succès',
                     201
                 );
@@ -70,34 +81,48 @@ class CommandeController extends Controller
 
     public function update(Request $request, Commande $commande)
     {
-        // Si on valide la réception d'une livraison
-        if ($request->statut === 'livree' && $commande->statut !== 'livree') {
+        // Si on valide la réception d'une livraison ou qu'on annule avec motif
+        if (($request->statut === 'livree' && $commande->statut !== 'livree') || 
+            ($request->statut === 'annulee' && $commande->statut !== 'annulee')) {
+            
             try {
                 return DB::transaction(function () use ($request, $commande) {
                     $commande->update([
-                        'statut'      => 'livree',
-                        'commentaire' => $request->commentaire ?? 'Réception validée',
+                        'statut'      => $request->statut,
+                        'commentaire' => $request->commentaire ?? ($request->statut === 'livree' ? 'Réception validée' : 'Annulation sans motif spécifié'),
                     ]);
 
-                    // Mettre à jour les stocks pour chaque ligne
-                    foreach ($commande->ligneCommandes as $ligne) {
-                        $medicament = $ligne->medicament;
-                        if ($medicament) {
-                            $medicament->increment('quantite', $ligne->quantite);
+                    // Mettre à jour les stocks pour chaque ligne uniquement si livrée
+                    if ($request->statut === 'livree') {
+                        foreach ($commande->ligneCommandes as $ligne) {
+                            $medicament = $ligne->medicament;
+                            if ($medicament) {
+                                $medicament->increment('quantite', $ligne->quantite);
+                            }
                         }
                     }
 
-                    return $this->successResponse($commande, 'Livraison validée et stocks mis à jour');
+                    $commande->load(['fournisseur']);
+
+                    // Alerter l'admin par email (on utilise le mail de la plateforme configuré)
+                    try {
+                        \Illuminate\Support\Facades\Mail::to(config('mail.from.address', 'admin@eph.com'))
+                            ->send(new \App\Mail\CommandeStatutMail($commande));
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("Erreur d'envoi mail statut: " . $e->getMessage());
+                    }
+
+                    $msg = $request->statut === 'livree' ? 'Livraison validée et stocks mis à jour' : 'Commande annulée avec succès';
+                    return $this->successResponse($commande, $msg);
                 });
             } catch (\Exception $e) {
-                return $this->errorResponse('Échec de la validation de livraison : ' . $e->getMessage(), 500);
+                return $this->errorResponse('Échec de la mise à jour : ' . $e->getMessage(), 500);
             }
         }
 
         $commande->update($request->only(['statut', 'montant_total', 'commentaire']));
         return $this->successResponse($commande, 'Commande mise à jour');
     }
-
 
     public function destroy(Commande $commande)
     {

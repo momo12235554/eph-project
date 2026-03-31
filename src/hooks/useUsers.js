@@ -22,10 +22,25 @@ export const useUsers = () => {
         }
     }, []);
 
+    const addUser = useCallback(async (userData) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await userService.createUser(userData);
+            return response;
+        } catch (err) {
+            setError(err.message || 'Erreur lors de la création de l\'utilisateur');
+            throw err; // Propage l'erreur pour que admin.jsx puisse l'afficher
+        } finally {
+            setIsLoading(false);
+        }
+    }, [loadUsers]);
+
     return {
         users,
         isLoading,
         error,
-        loadUsers
+        loadUsers,
+        addUser
     };
 };

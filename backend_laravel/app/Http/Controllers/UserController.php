@@ -20,14 +20,21 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'username' => 'required|string|unique:users',
-            'password' => 'required|string',
+            'email'    => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6',
             'role'     => 'required|string',
+            'nom'      => 'required|string',
+            'prenom'   => 'nullable|string',
         ]);
 
         $user = User::create([
-            ...$request->all(),
+            'nom'      => $request->nom,
+            'prenom'   => $request->prenom,
+            'email'    => $request->email,
             'password' => Hash::make($request->password),
+            'role'     => $request->role,
+            'service'  => $request->service,
+            'telephone'=> $request->telephone,
         ]);
 
         return response()->json($user, 201);

@@ -45,8 +45,22 @@ class MedicamentController extends Controller
 
     public function destroy(Medicament $medicament)
     {
-        $medicament->delete();
-        return $this->successResponse(null, 'Médicament supprimé');
+        try {
+            // Vérifier s'il est utilisé dans des lignes de commande
+            if ($medicament->ligneCommandes()->exists()) {
+                return $this->errorResponse(
+                    "Impossible de supprimer ce médicament car il est lié à des commandes existantes. Vous pouvez modifier sa quantité à 0.", 
+                    409
+                );
+            }
+
+            // Supprimer les alertes liées
+            $medicament->alertes()->delete();
+            $medicament->delete();
+            return $this->successResponse(null, 'Médicament supprimé');
+        } catch (\Exception $e) {
+            return $this->errorResponse("Erreur lors de la suppression.", 500);
+        }
     }
 
     public function stockFaible()

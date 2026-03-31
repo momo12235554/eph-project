@@ -48,14 +48,14 @@ class Medicament extends Model
         static::saved(function ($medicament) {
             // ── Rupture totale ──
             if ($medicament->quantite <= 0) {
-                Alerte::firstOrCreate([
+                Alerte::updateOrCreate([
                     'medicament_id' => $medicament->id,
                     'type' => 'rupture',
                     'statut' => 'active',
                 ], [
                     'titre' => 'Rupture de stock : ' . $medicament->nom,
                     'message' => 'Le stock de ce médicament est épuisé (0 unités). Commande urgente recommandée.',
-                    'priorite' => 'haute'
+                    'priorite' => 'critique'
                 ]);
             }
             // ── Stock bas (1 – 10) ──
@@ -66,7 +66,7 @@ class Medicament extends Model
                     ->where('statut', 'active')
                     ->update(['statut' => 'resolue', 'resolved_at' => now()]);
 
-                Alerte::firstOrCreate([
+                Alerte::updateOrCreate([
                     'medicament_id' => $medicament->id,
                     'type' => 'stock_bas',
                     'statut' => 'active',
@@ -84,29 +84,48 @@ class Medicament extends Model
             }
 
             // ── Expiration ──
-            if ($medicament->date_expiration && $medicament->date_expiration > now()) {
-                $joursRestants = $medicament->date_expiration->diffInDays(now());
+            if ($medicament->date_expiration) {
+                $now = now()->startOfDay();
+                $exp = \Carbon\Carbon::parse($medicament->date_expiration)->startOfDay();
+                $joursRestants = (int) $now->diffInDays($exp, false);
 
-                if ($joursRestants <= 7) {
-                    Alerte::firstOrCreate([
+                if ($joursRestants <= 90 && $joursRestants >= 0) {
+                    if ($joursRestants == 0) {
+                        $priorite = 'critique';
+                        $titre = 'Expiration imminente : ' . $medicament->nom;
+                    } else if ($joursRestants <= 30) {
+                        $priorite = 'haute';
+                        $titre = 'Expiration imminente : ' . $medicament->nom;
+                    } else {
+                        $priorite = 'moyenne';
+                        $titre = 'Expiration proche : ' . $medicament->nom;
+                    }
+                    
+                    Alerte::updateOrCreate([
                         'medicament_id' => $medicament->id,
                         'type' => 'expiration',
                         'statut' => 'active',
                     ], [
-                        'titre' => 'Expiration imminente : ' . $medicament->nom,
-                        'message' => 'Expire dans ' . $joursRestants . ' jours (Le ' . $medicament->date_expiration->format('d/m/Y') . '). Retirer du stock !',
-                        'priorite' => 'haute'
+                        'titre' => $titre,
+                        'message' => 'Expire dans ' . $joursRestants . ' jour(s) (Le ' . $exp->format('d/m/Y') . ').',
+                        'priorite' => $priorite
                     ]);
-                } elseif ($joursRestants <= 30) {
-                    Alerte::firstOrCreate([
+                } elseif ($joursRestants < 0) {
+                    Alerte::updateOrCreate([
                         'medicament_id' => $medicament->id,
                         'type' => 'expiration',
                         'statut' => 'active',
                     ], [
-                        'titre' => 'Expiration proche : ' . $medicament->nom,
-                        'message' => 'Expire dans ' . $joursRestants . ' jours (Le ' . $medicament->date_expiration->format('d/m/Y') . ').',
-                        'priorite' => 'moyenne'
+                        'titre' => 'Médicament expiré : ' . $medicament->nom,
+                        'message' => 'Ce médicament a expiré le ' . $exp->format('d/m/Y') . '. À retirer du stock urgemment !',
+                        'priorite' => 'critique'
                     ]);
+                } else {
+                    // Si plus de 90 jours, on clôture les alertes existantes
+                    Alerte::where('medicament_id', $medicament->id)
+                        ->where('type', 'expiration')
+                        ->where('statut', 'active')
+                        ->update(['statut' => 'resolue', 'resolved_at' => now()]);
                 }
             }
         });
